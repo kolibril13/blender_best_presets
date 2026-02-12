@@ -61,6 +61,9 @@ class BESTPRESETS_OT_set_mp4_preset(bpy.types.Operator):
         render.ffmpeg.audio_codec = 'AAC'
         render.ffmpeg.audio_bitrate = 192
 
+        # Set default output folder
+        render.filepath = '/Users/jan-hendrik/Downloads/'
+
         self.report({'INFO'}, "MP4 export settings applied")
         return {'FINISHED'}
 
