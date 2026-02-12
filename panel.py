@@ -48,14 +48,14 @@ class BESTPRESETS_OT_set_mp4_preset(bpy.types.Operator):
         # Video codec
         render.ffmpeg.codec = 'H264'
 
-        # Encoding quality
-        render.ffmpeg.constant_rate_factor = 'MEDIUM'
+        # Encoding quality (HIGH = visually lossless, avoids banding)
+        render.ffmpeg.constant_rate_factor = 'HIGH'
 
-        # Encoding speed (slower = better compression)
-        render.ffmpeg.ffmpeg_preset = 'GOOD'
+        # Encoding speed (slower = better compression at same quality)
+        render.ffmpeg.ffmpeg_preset = 'BEST'
 
-        # GOP size (keyframe interval)
-        render.ffmpeg.gopsize = 18
+        # GOP size (shorter = more keyframes = better quality, slightly larger file)
+        render.ffmpeg.gopsize = 12
 
         # Audio
         render.ffmpeg.audio_codec = 'AAC'
