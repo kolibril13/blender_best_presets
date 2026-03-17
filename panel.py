@@ -1,4 +1,10 @@
+from pathlib import Path
+
 import bpy
+
+
+def get_default_downloads_path():
+    return str(Path.home() / "Downloads") + "/"
 
 
 class BESTPRESETS_OT_set_standard_color(bpy.types.Operator):
@@ -61,10 +67,45 @@ class BESTPRESETS_OT_set_mp4_preset(bpy.types.Operator):
         render.ffmpeg.audio_codec = 'AAC'
         render.ffmpeg.audio_bitrate = 192
 
-        # Set default output folder
-        render.filepath = '/Users/jan-hendrik/Downloads/'
+        # Keep the output path aligned with the add-on's selected folder.
+        render.filepath = scene.best_presets_output_folder
 
         self.report({'INFO'}, "MP4 export settings applied")
+        return {'FINISHED'}
+
+
+class BESTPRESETS_OT_pick_output_folder(bpy.types.Operator):
+    bl_idname = "best_presets.pick_output_folder"
+    bl_label = "Select Output Folder"
+    bl_description = "Choose an output folder for renders"
+
+    directory: bpy.props.StringProperty(
+        name="Output Folder",
+        subtype='DIR_PATH',
+    )
+
+    def execute(self, context):
+        context.scene.best_presets_output_folder = self.directory or get_default_downloads_path()
+        self.report({'INFO'}, "Output folder selected. Click Accept to apply it.")
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        del event
+        self.directory = context.scene.best_presets_output_folder or get_default_downloads_path()
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+
+class BESTPRESETS_OT_accept_output_folder(bpy.types.Operator):
+    bl_idname = "best_presets.accept_output_folder"
+    bl_label = "Accept"
+    bl_description = "Apply the selected output folder to Blender render output"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scene = context.scene
+        scene.render.filepath = scene.best_presets_output_folder or get_default_downloads_path()
+        self.report({'INFO'}, f"Output folder set to: {scene.render.filepath}")
         return {'FINISHED'}
 
 
@@ -131,7 +172,19 @@ class BESTPRESETS_PT_output(bpy.types.Panel):
 
         # Output folder
         layout.label(text="Output Folder:")
-        layout.prop(render, "filepath", text="")
+        layout.prop(scene, "best_presets_output_folder", text="")
+
+        row = layout.row(align=True)
+        row.operator(
+            BESTPRESETS_OT_pick_output_folder.bl_idname,
+            text="Select Folder",
+            icon='FILE_FOLDER',
+        )
+        row.operator(
+            BESTPRESETS_OT_accept_output_folder.bl_idname,
+            text="Accept",
+            icon='CHECKMARK',
+        )
 
         layout.separator()
 
@@ -158,3 +211,16 @@ class BESTPRESETS_PT_output(bpy.types.Panel):
             text="Apply Best MP4 Settings",
             icon='FILE_MOVIE',
         )
+
+
+def register():
+    bpy.types.Scene.best_presets_output_folder = bpy.props.StringProperty(
+        name="Output Folder",
+        description="Folder used for render output",
+        subtype='DIR_PATH',
+        default=get_default_downloads_path(),
+    )
+
+
+def unregister():
+    del bpy.types.Scene.best_presets_output_folder
