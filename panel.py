@@ -216,6 +216,34 @@ class BESTPRESETS_OT_set_mp4_preset(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BESTPRESETS_OT_set_image_sequence_preset(bpy.types.Operator):
+    bl_idname = "best_presets.set_image_sequence_preset"
+    bl_label = "Set Image Sequence Preset"
+    bl_description = (
+        "Switch to PNG image sequence output into "
+        "Downloads/cache/<scene name>/"
+    )
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scene = context.scene
+        render = scene.render
+
+        if hasattr(render.image_settings, 'media_type'):
+            render.image_settings.media_type = 'IMAGE'
+
+        render.image_settings.file_format = 'PNG'
+        render.image_settings.color_mode = 'RGBA'
+        render.image_settings.compression = 15
+
+        cache_dir = Path.home() / "Downloads" / "cache" / scene.name
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        render.filepath = str(cache_dir) + "/"
+
+        self.report({'INFO'}, f"Image sequence → {render.filepath}")
+        return {'FINISHED'}
+
+
 class BESTPRESETS_OT_pick_output_folder(bpy.types.Operator):
     bl_idname = "best_presets.pick_output_folder"
     bl_label = "Select Output Folder"
@@ -408,6 +436,18 @@ class BESTPRESETS_PT_output(bpy.types.Panel):
             BESTPRESETS_OT_set_mp4_preset.bl_idname,
             text="Apply Best MP4 Settings",
             icon='FILE_MOVIE',
+        )
+
+        layout.separator()
+        layout.label(text="Image Sequence:")
+        layout.label(
+            text=f"→ Downloads/cache/{context.scene.name}/",
+            icon='INFO',
+        )
+        layout.operator(
+            BESTPRESETS_OT_set_image_sequence_preset.bl_idname,
+            text="Apply Image Sequence Preset",
+            icon='RENDERLAYERS',
         )
 
         layout.separator()
