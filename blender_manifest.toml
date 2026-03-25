@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 # Example of manifest file for a Blender extension
 # Change the values according to your extension
 id = "best_presets"
-version = "0.3.0"
+version = "0.4.0"
 name = "Best Presets"
 tagline = "Quick preset tools for Blender"
 maintainer = "Jan-Hendrik Müller"
