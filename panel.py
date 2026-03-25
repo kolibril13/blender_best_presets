@@ -377,7 +377,7 @@ class BESTPRESETS_PT_color_management(bpy.types.Panel):
         col.enabled = is_standard
         col.operator(
             BESTPRESETS_OT_restore_default_color.bl_idname,
-            text="Restore Default",
+            text="Reset",
             icon='LOOP_BACK',
         )
 
