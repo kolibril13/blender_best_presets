@@ -1,0 +1,35 @@
+name: Build and Create Draft Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-draft-release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: BradyAJohnston/setup-blender@v5
+        with:
+          version: latest
+
+      - name: Validate and build extension
+        run: |
+          mkdir -p dist
+          blender --command extension validate .
+          blender --command extension build --source-dir . --output-dir dist
+
+      - name: Create draft release
+        run: |
+          gh release create "${{ github.ref_name }}" --draft --generate-notes dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
