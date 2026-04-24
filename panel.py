@@ -216,6 +216,42 @@ class BESTPRESETS_OT_set_mp4_preset(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BESTPRESETS_OT_set_webm_preset(bpy.types.Operator):
+    bl_idname = "best_presets.set_webm_preset"
+    bl_label = "Set Best WebM Settings"
+    bl_description = "Configure optimal WebM export settings (VP9 video, Opus audio)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scene = context.scene
+        render = scene.render
+
+        if hasattr(render.image_settings, 'media_type'):
+            render.image_settings.media_type = 'VIDEO'
+
+        render.image_settings.file_format = 'FFMPEG'
+
+        render.ffmpeg.format = 'WEBM'
+        render.ffmpeg.codec = 'WEBM'
+
+        # CRF-based quality (HIGH = visually lossless, avoids banding)
+        render.ffmpeg.constant_rate_factor = 'HIGH'
+
+        # Slower preset = better compression at the same quality
+        render.ffmpeg.ffmpeg_preset = 'BEST'
+
+        # GOP size – more keyframes improves scrubbing and quality
+        render.ffmpeg.gopsize = 12
+
+        render.ffmpeg.audio_codec = 'OPUS'
+        render.ffmpeg.audio_bitrate = 192
+
+        render.filepath = scene.best_presets_output_folder
+
+        self.report({'INFO'}, "WebM export settings applied")
+        return {'FINISHED'}
+
+
 class BESTPRESETS_OT_set_image_sequence_preset(bpy.types.Operator):
     bl_idname = "best_presets.set_image_sequence_preset"
     bl_label = "Set Image Sequence Preset"
@@ -435,6 +471,11 @@ class BESTPRESETS_PT_output(bpy.types.Panel):
         layout.operator(
             BESTPRESETS_OT_set_mp4_preset.bl_idname,
             text="Apply Best MP4 Settings",
+            icon='FILE_MOVIE',
+        )
+        layout.operator(
+            BESTPRESETS_OT_set_webm_preset.bl_idname,
+            text="Apply Best WebM Settings",
             icon='FILE_MOVIE',
         )
 
