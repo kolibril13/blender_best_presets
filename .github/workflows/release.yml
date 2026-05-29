@@ -33,3 +33,6 @@ jobs:
           gh release create "${{ github.ref_name }}" --generate-notes dist/*.zip
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Trigger website rebuild
+        run: curl -X POST "${{ secrets.CF_DEPLOY_HOOK_URL }}"
