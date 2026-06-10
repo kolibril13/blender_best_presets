@@ -371,10 +371,8 @@ class BESTPRESETS_OT_reset_geonodes_hotkeys(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BESTPRESETS_PT_main_panel(bpy.types.Panel):
+class BestPresetsMainPanelMixin:
     bl_label = "Best Presets"
-    bl_idname = "BESTPRESETS_PT_main_panel"
-    bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Best Presets"
 
@@ -382,13 +380,10 @@ class BESTPRESETS_PT_main_panel(bpy.types.Panel):
         layout = self.layout
 
 
-class BESTPRESETS_PT_color_management(bpy.types.Panel):
+class BestPresetsColorManagementMixin:
     bl_label = "Color Management"
-    bl_idname = "BESTPRESETS_PT_color_management"
-    bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Best Presets"
-    bl_parent_id = "BESTPRESETS_PT_main_panel"
     bl_order = 0
 
     def draw(self, context):
@@ -418,13 +413,10 @@ class BESTPRESETS_PT_color_management(bpy.types.Panel):
         )
 
 
-class BESTPRESETS_PT_output(bpy.types.Panel):
+class BestPresetsOutputMixin:
     bl_label = "Output"
-    bl_idname = "BESTPRESETS_PT_output"
-    bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Best Presets"
-    bl_parent_id = "BESTPRESETS_PT_main_panel"
     bl_order = 1
 
     def draw(self, context):
@@ -517,6 +509,46 @@ class BESTPRESETS_PT_output(bpy.types.Panel):
             text="Reset",
             icon='LOOP_BACK',
         )
+
+
+# 3D Viewport sidebar
+
+
+class BESTPRESETS_PT_main_panel(BestPresetsMainPanelMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_main_panel"
+    bl_space_type = 'VIEW_3D'
+
+
+class BESTPRESETS_PT_color_management(BestPresetsColorManagementMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_color_management"
+    bl_space_type = 'VIEW_3D'
+    bl_parent_id = "BESTPRESETS_PT_main_panel"
+
+
+class BESTPRESETS_PT_output(BestPresetsOutputMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_output"
+    bl_space_type = 'VIEW_3D'
+    bl_parent_id = "BESTPRESETS_PT_main_panel"
+
+
+# Video Sequence Editor sidebar (sequencer and preview views)
+
+
+class BESTPRESETS_PT_main_panel_seq(BestPresetsMainPanelMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_main_panel_seq"
+    bl_space_type = 'SEQUENCE_EDITOR'
+
+
+class BESTPRESETS_PT_color_management_seq(BestPresetsColorManagementMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_color_management_seq"
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_parent_id = "BESTPRESETS_PT_main_panel_seq"
+
+
+class BESTPRESETS_PT_output_seq(BestPresetsOutputMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_output_seq"
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_parent_id = "BESTPRESETS_PT_main_panel_seq"
 
 
 def register():
