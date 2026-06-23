@@ -8,6 +8,7 @@ GEONODES_KEYMAP_NAMES = {"Node Editor"}
 
 viewport_keymaps = []
 geonodes_keymaps = []
+search_keymaps = []
 
 
 def get_default_downloads_path():
@@ -145,6 +146,32 @@ def register_geonodes_grab_hotkey_remap():
     km = target_kc.keymaps.new(name="Node Editor", space_type='NODE_EDITOR', region_type='WINDOW')
     kmi = km.keymap_items.new('transform.translate', 'H', 'PRESS')
     geonodes_keymaps.append((km, kmi))
+
+    return True
+
+
+def clear_search_hotkey():
+    """Remove our Ctrl+K → Search bindings."""
+    for km, kmi in search_keymaps:
+        try:
+            km.keymap_items.remove(kmi)
+        except (RuntimeError, ReferenceError):
+            pass
+    search_keymaps.clear()
+
+
+def register_search_hotkey():
+    """Bind Ctrl+K → operator search menu (global Window keymap)."""
+    clear_search_hotkey()
+
+    wm = bpy.context.window_manager
+    target_kc = get_target_keyconfig(wm)
+    if target_kc is None:
+        return False
+
+    km = target_kc.keymaps.new(name="Window", space_type='EMPTY', region_type='WINDOW')
+    kmi = km.keymap_items.new('wm.search_menu', 'K', 'PRESS', ctrl=True)
+    search_keymaps.append((km, kmi))
 
     return True
 
@@ -371,6 +398,34 @@ class BESTPRESETS_OT_reset_geonodes_hotkeys(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BESTPRESETS_OT_set_search_hotkey(bpy.types.Operator):
+    bl_idname = "best_presets.set_search_hotkey"
+    bl_label = "Set Ctrl+K → Search"
+    bl_description = "Bind Ctrl+K to open the operator search menu"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        del context
+        if not register_search_hotkey():
+            self.report({'WARNING'}, "Could not update Blender keyconfig")
+            return {'CANCELLED'}
+        self.report({'INFO'}, "Ctrl+K now opens Search")
+        return {'FINISHED'}
+
+
+class BESTPRESETS_OT_reset_search_hotkey(bpy.types.Operator):
+    bl_idname = "best_presets.reset_search_hotkey"
+    bl_label = "Reset"
+    bl_description = "Remove the Ctrl+K search binding"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        del context
+        clear_search_hotkey()
+        self.report({'INFO'}, "Ctrl+K search binding removed")
+        return {'FINISHED'}
+
+
 class BestPresetsMainPanelMixin:
     bl_label = "Best Presets"
     bl_region_type = 'UI'
@@ -510,6 +565,21 @@ class BestPresetsOutputMixin:
             icon='LOOP_BACK',
         )
 
+        layout.separator()
+        layout.label(text="Search Shortcut:")
+
+        row = layout.row(align=True)
+        row.operator(
+            BESTPRESETS_OT_set_search_hotkey.bl_idname,
+            text="Ctrl+K → Search",
+            icon='VIEWZOOM',
+        )
+        row.operator(
+            BESTPRESETS_OT_reset_search_hotkey.bl_idname,
+            text="Reset",
+            icon='LOOP_BACK',
+        )
+
 
 # 3D Viewport sidebar
 
@@ -562,4 +632,5 @@ def register():
 
 def unregister():
     clear_grab_hotkey_remap()
+    clear_search_hotkey()
     del bpy.types.Scene.best_presets_output_folder
