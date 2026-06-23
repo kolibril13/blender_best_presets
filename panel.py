@@ -150,14 +150,42 @@ def register_geonodes_grab_hotkey_remap():
     return True
 
 
+def _is_our_search_kmi(kmi):
+    """True if this keymap item is our Cmd+K → Search binding."""
+    try:
+        return (
+            kmi.idname == 'wm.search_menu'
+            and kmi.type == 'K'
+            and kmi.value == 'PRESS'
+            and kmi.oskey
+        )
+    except (RuntimeError, ReferenceError, UnicodeDecodeError):
+        return False
+
+
 def clear_search_hotkey():
-    """Remove our Cmd+K → Search bindings."""
-    for km, kmi in search_keymaps:
-        try:
-            km.keymap_items.remove(kmi)
-        except (RuntimeError, ReferenceError):
-            pass
+    """Remove our Cmd+K → Search bindings.
+
+    Look the items up fresh in the live keymaps instead of trusting the
+    references in ``search_keymaps`` — those can dangle after a hot-reload
+    and reading a freed item raises UnicodeDecodeError on ``remove()``.
+    """
     search_keymaps.clear()
+
+    wm = bpy.context.window_manager
+    for kc in (wm.keyconfigs.user, wm.keyconfigs.addon, wm.keyconfigs.active):
+        if kc is None:
+            continue
+        for km in kc.keymaps:
+            if km.name != "Window":
+                continue
+            # Collect first; removing while iterating the collection is unsafe.
+            doomed = [kmi for kmi in km.keymap_items if _is_our_search_kmi(kmi)]
+            for kmi in doomed:
+                try:
+                    km.keymap_items.remove(kmi)
+                except (RuntimeError, ReferenceError):
+                    pass
 
 
 def register_search_hotkey():
@@ -214,6 +242,33 @@ def _set_pref(attr, value):
     prefs = _prefs()
     if prefs is not None:
         setattr(prefs, attr, value)
+
+
+def _status_icon(enabled):
+    """Small on/off badge icon for a toggle's current state."""
+    return 'CHECKMARK' if enabled else 'RADIOBUT_OFF'
+
+
+def is_mp4_preset_active(render):
+    ff = render.ffmpeg
+    return (
+        render.image_settings.file_format == 'FFMPEG'
+        and ff.format == 'MPEG4'
+        and ff.codec == 'H264'
+    )
+
+
+def is_webm_preset_active(render):
+    ff = render.ffmpeg
+    return (
+        render.image_settings.file_format == 'FFMPEG'
+        and ff.format == 'WEBM'
+        and ff.codec == 'WEBM'
+    )
+
+
+def is_image_sequence_active(render):
+    return render.image_settings.file_format == 'PNG'
 
 
 def _apply_persistent_remaps():
@@ -510,6 +565,7 @@ class BestPresetsColorManagementMixin:
         is_standard = current == 'Standard'
 
         row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(is_standard))
         col = row.column()
         col.enabled = not is_standard
         col.operator(
@@ -574,12 +630,16 @@ class BestPresetsOutputMixin:
         else:
             layout.label(text=f"Current: {fmt}", icon='INFO')
 
-        layout.operator(
+        row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(is_mp4_preset_active(render)))
+        row.operator(
             BESTPRESETS_OT_set_mp4_preset.bl_idname,
             text="Apply Best MP4 Settings",
             icon='FILE_MOVIE',
         )
-        layout.operator(
+        row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(is_webm_preset_active(render)))
+        row.operator(
             BESTPRESETS_OT_set_webm_preset.bl_idname,
             text="Apply Best WebM Settings",
             icon='FILE_MOVIE',
@@ -591,16 +651,24 @@ class BestPresetsOutputMixin:
             text=f"→ Downloads/cache/{context.scene.name}/",
             icon='INFO',
         )
-        layout.operator(
+        row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(is_image_sequence_active(render)))
+        row.operator(
             BESTPRESETS_OT_set_image_sequence_preset.bl_idname,
             text="Apply Image Sequence Preset",
             icon='RENDERLAYERS',
         )
 
+        prefs = _prefs()
+        viewport_on = bool(prefs and prefs.viewport_hgrab_enabled)
+        geonodes_on = bool(prefs and prefs.geonodes_hgrab_enabled)
+        search_on = bool(prefs and prefs.search_hotkey_enabled)
+
         layout.separator()
         layout.label(text="H Key Remapping:")
 
         row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(viewport_on))
         row.operator(
             BESTPRESETS_OT_remap_grab_hotkeys.bl_idname,
             text="Viewport: H → Grab",
@@ -613,6 +681,7 @@ class BestPresetsOutputMixin:
         )
 
         row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(geonodes_on))
         row.operator(
             BESTPRESETS_OT_remap_grab_hotkeys_geonodes.bl_idname,
             text="Geo Nodes: H → Grab",
@@ -628,6 +697,7 @@ class BestPresetsOutputMixin:
         layout.label(text="Search Shortcut:")
 
         row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(search_on))
         row.operator(
             BESTPRESETS_OT_set_search_hotkey.bl_idname,
             text="Cmd+K → Search",
