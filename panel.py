@@ -176,6 +176,59 @@ def register_search_hotkey():
     return True
 
 
+class BestPresetsPreferences(bpy.types.AddonPreferences):
+    bl_idname = __package__
+
+    viewport_hgrab_enabled: bpy.props.BoolProperty(
+        name="Viewport H → Grab",
+        description="Re-apply the viewport H → Grab remap on startup",
+        default=False,
+    )
+    geonodes_hgrab_enabled: bpy.props.BoolProperty(
+        name="Geometry Nodes H → Grab",
+        description="Re-apply the Geometry Nodes H → Grab remap on startup",
+        default=False,
+    )
+    search_hotkey_enabled: bpy.props.BoolProperty(
+        name="Cmd+K → Search",
+        description="Re-apply the Cmd+K search shortcut on startup",
+        default=False,
+    )
+
+    def draw(self, context):
+        del context
+        layout = self.layout
+        layout.label(text="Remembered shortcuts (re-applied on startup):")
+        layout.prop(self, "viewport_hgrab_enabled")
+        layout.prop(self, "geonodes_hgrab_enabled")
+        layout.prop(self, "search_hotkey_enabled")
+
+
+def _prefs():
+    """Return this add-on's preferences, or None if unavailable."""
+    addon = bpy.context.preferences.addons.get(__package__)
+    return addon.preferences if addon else None
+
+
+def _set_pref(attr, value):
+    prefs = _prefs()
+    if prefs is not None:
+        setattr(prefs, attr, value)
+
+
+def _apply_persistent_remaps():
+    """Re-apply whichever remaps the user previously enabled. Runs once."""
+    prefs = _prefs()
+    if prefs is not None:
+        if prefs.viewport_hgrab_enabled:
+            register_grab_hotkey_remap()
+        if prefs.geonodes_hgrab_enabled:
+            register_geonodes_grab_hotkey_remap()
+        if prefs.search_hotkey_enabled:
+            register_search_hotkey()
+    return None
+
+
 class BESTPRESETS_OT_set_standard_color(bpy.types.Operator):
     bl_idname = "best_presets.set_standard_color"
     bl_label = "Set Standard Color Output"
@@ -353,6 +406,7 @@ class BESTPRESETS_OT_remap_grab_hotkeys(bpy.types.Operator):
         if not register_grab_hotkey_remap():
             self.report({'WARNING'}, "Could not update Blender viewport keyconfig")
             return {'CANCELLED'}
+        _set_pref("viewport_hgrab_enabled", True)
         self.report({'INFO'}, "3D Viewport: H now triggers Grab/Move")
         return {'FINISHED'}
 
@@ -366,6 +420,7 @@ class BESTPRESETS_OT_reset_viewport_hotkeys(bpy.types.Operator):
     def execute(self, context):
         del context
         clear_viewport_remap()
+        _set_pref("viewport_hgrab_enabled", False)
         self.report({'INFO'}, "3D Viewport: H restored to default")
         return {'FINISHED'}
 
@@ -381,6 +436,7 @@ class BESTPRESETS_OT_remap_grab_hotkeys_geonodes(bpy.types.Operator):
         if not register_geonodes_grab_hotkey_remap():
             self.report({'WARNING'}, "Could not update Blender node editor keyconfig")
             return {'CANCELLED'}
+        _set_pref("geonodes_hgrab_enabled", True)
         self.report({'INFO'}, "Geometry Nodes: H now triggers Grab/Move")
         return {'FINISHED'}
 
@@ -394,6 +450,7 @@ class BESTPRESETS_OT_reset_geonodes_hotkeys(bpy.types.Operator):
     def execute(self, context):
         del context
         clear_geonodes_remap()
+        _set_pref("geonodes_hgrab_enabled", False)
         self.report({'INFO'}, "Geometry Nodes: H restored to default")
         return {'FINISHED'}
 
@@ -409,6 +466,7 @@ class BESTPRESETS_OT_set_search_hotkey(bpy.types.Operator):
         if not register_search_hotkey():
             self.report({'WARNING'}, "Could not update Blender keyconfig")
             return {'CANCELLED'}
+        _set_pref("search_hotkey_enabled", True)
         self.report({'INFO'}, "Cmd+K now opens Search")
         return {'FINISHED'}
 
@@ -422,6 +480,7 @@ class BESTPRESETS_OT_reset_search_hotkey(bpy.types.Operator):
     def execute(self, context):
         del context
         clear_search_hotkey()
+        _set_pref("search_hotkey_enabled", False)
         self.report({'INFO'}, "Cmd+K search binding removed")
         return {'FINISHED'}
 
@@ -628,6 +687,12 @@ def register():
         subtype='DIR_PATH',
         default=get_default_downloads_path(),
     )
+
+    # Re-apply remembered keymap remaps once the UI/context is ready.
+    # Deferred via a timer because context is restricted during startup
+    # registration; skipped in background mode (no window manager).
+    if not bpy.app.background:
+        bpy.app.timers.register(_apply_persistent_remaps, first_interval=0.1)
 
 
 def unregister():
