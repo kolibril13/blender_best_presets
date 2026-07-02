@@ -132,10 +132,6 @@ class BestPresetsOutputMixin:
 
         layout.separator()
         layout.label(text="Image Sequence:")
-        layout.label(
-            text=f"→ Downloads/cache/{scene.name}/",
-            icon='INFO',
-        )
         _draw_preset_row(layout, render, 'IMAGE_SEQUENCE')
 
 

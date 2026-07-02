@@ -22,7 +22,7 @@ def _image_sequence_cache_path(scene):
 @dataclass(frozen=True)
 class RenderPreset:
     label: str
-    description: str
+    description: str  # tooltip; may reference {scene}
     button_text: str  # sidebar button label
     icon: str  # sidebar button icon
     settings: dict  # dotted paths on scene.render, applied in order
@@ -87,7 +87,7 @@ RENDER_PRESETS = {
     ),
     'IMAGE_SEQUENCE': RenderPreset(
         label="Image Sequence",
-        description="Switch to PNG image sequence output into Downloads/cache/<scene name>/",
+        description="Render a PNG image sequence into Downloads/cache/{scene}/",
         button_text="Apply Image Sequence Preset",
         icon='RENDERLAYERS',
         settings={
@@ -135,16 +135,34 @@ class BESTPRESETS_OT_apply_render_preset(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     preset: bpy.props.EnumProperty(
-        items=[(key, p.label, p.description) for key, p in RENDER_PRESETS.items()],
+        items=[
+            (key, p.label, p.description.format(scene="<scene name>"))
+            for key, p in RENDER_PRESETS.items()
+        ],
         options={'HIDDEN'},
     )
 
+    @classmethod
+    def description(cls, context, properties):
+        preset = RENDER_PRESETS.get(properties.preset)
+        if preset is None:
+            return cls.bl_description
+        scene = getattr(context, "scene", None)
+        scene_name = scene.name if scene else "<scene name>"
+        return preset.description.format(scene=scene_name)
+
     def execute(self, context):
-        scene = context.scene
         preset = RENDER_PRESETS[self.preset]
-        apply_settings(scene.render, preset.settings)
-        scene.render.filepath = preset.output_path(scene)
-        self.report({'INFO'}, preset.report.format(filepath=scene.render.filepath))
+        folder = context.scene.best_presets_output_folder or get_default_downloads_path()
+
+        # Apply to every scene so exports started elsewhere (e.g. a
+        # dedicated VSE scene) land in the same place.
+        for scene in bpy.data.scenes:
+            scene.best_presets_output_folder = folder
+            apply_settings(scene.render, preset.settings)
+            scene.render.filepath = preset.output_path(scene)
+
+        self.report({'INFO'}, preset.report.format(filepath=context.scene.render.filepath))
         return {'FINISHED'}
 
 
@@ -173,13 +191,15 @@ class BESTPRESETS_OT_pick_output_folder(bpy.types.Operator):
 class BESTPRESETS_OT_accept_output_folder(bpy.types.Operator):
     bl_idname = "best_presets.accept_output_folder"
     bl_label = "Accept"
-    bl_description = "Apply the selected output folder to Blender render output"
+    bl_description = "Apply the selected output folder to render output in all scenes"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        scene = context.scene
-        scene.render.filepath = scene.best_presets_output_folder or get_default_downloads_path()
-        self.report({'INFO'}, f"Output folder set to: {scene.render.filepath}")
+        folder = context.scene.best_presets_output_folder or get_default_downloads_path()
+        for scene in bpy.data.scenes:
+            scene.best_presets_output_folder = folder
+            scene.render.filepath = folder
+        self.report({'INFO'}, f"Output folder set to: {folder}")
         return {'FINISHED'}
 
 
