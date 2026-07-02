@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable
 
 import bpy
+from bpy.app.handlers import persistent
 
 
 def get_default_downloads_path():
@@ -203,6 +204,48 @@ class BESTPRESETS_OT_accept_output_folder(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def _fill_unset_output_paths():
+    """Point scenes without a usable output path at the add-on's folder.
+
+    Newly added scenes start with ``//`` (blend-file relative), which
+    resolves to nothing in an unsaved file and makes renders fail with
+    "cannot save: '0001.png'".
+    """
+    for scene in bpy.data.scenes:
+        if scene.render.filepath in ("", "//"):
+            scene.render.filepath = scene.best_presets_output_folder or get_default_downloads_path()
+
+
+@persistent
+def _fill_on_load(*_args):
+    _fill_unset_output_paths()
+
+
+@persistent
+def _fill_on_render(*_args):
+    _fill_unset_output_paths()
+
+
+_last_scene_count = 0
+
+
+@persistent
+def _fill_on_depsgraph_update(*_args):
+    # Cheap new-scene detection: only rescan when the scene count changes.
+    global _last_scene_count
+    count = len(bpy.data.scenes)
+    if count != _last_scene_count:
+        _last_scene_count = count
+        _fill_unset_output_paths()
+
+
+_HANDLERS = (
+    ("load_post", _fill_on_load),
+    ("render_init", _fill_on_render),
+    ("depsgraph_update_post", _fill_on_depsgraph_update),
+)
+
+
 def register():
     bpy.types.Scene.best_presets_output_folder = bpy.props.StringProperty(
         name="Output Folder",
@@ -211,6 +254,14 @@ def register():
         default=get_default_downloads_path(),
     )
 
+    for name, handler in _HANDLERS:
+        getattr(bpy.app.handlers, name).append(handler)
+
 
 def unregister():
+    for name, handler in _HANDLERS:
+        handler_list = getattr(bpy.app.handlers, name)
+        if handler in handler_list:
+            handler_list.remove(handler)
+
     del bpy.types.Scene.best_presets_output_folder
