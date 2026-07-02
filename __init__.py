@@ -11,17 +11,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-bl_info = {
-    "name": "Best Presets",
-    "author": "Jan-Hendrik Müller",
-    "description": "Quick preset tools for Blender",
-    "blender": (4, 2, 0),
-    "version": (1, 0, 0),
-    "location": "View3D > Sidebar > Best Presets",
-    "warning": "",
-    "category": "Generic",
-}
-
 from . import auto_load
 
 auto_load.init()
