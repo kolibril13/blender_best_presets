@@ -1,3 +1,7 @@
+---
+model: haiku
+---
+
 Bump the patch version in `blender_manifest.toml`, commit, tag, and push to GitHub.
 
 ## Steps
