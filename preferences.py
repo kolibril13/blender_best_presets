@@ -19,6 +19,11 @@ class BestPresetsPreferences(bpy.types.AddonPreferences):
         description="Re-apply the Cmd+K search shortcut on startup",
         default=False,
     )
+    exit_node_group_hotkey_enabled: bpy.props.BoolProperty(
+        name="Esc → Exit Node Group",
+        description="Re-apply the Esc → Exit Node Group shortcut on startup",
+        default=False,
+    )
 
     def draw(self, context):
         del context
@@ -27,6 +32,7 @@ class BestPresetsPreferences(bpy.types.AddonPreferences):
         layout.prop(self, "viewport_hgrab_enabled")
         layout.prop(self, "geonodes_hgrab_enabled")
         layout.prop(self, "search_hotkey_enabled")
+        layout.prop(self, "exit_node_group_hotkey_enabled")
 
 
 def get_prefs():

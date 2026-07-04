@@ -171,6 +171,61 @@ def register_search_hotkey():
     return True
 
 
+def _is_our_exit_node_group_kmi(kmi):
+    """True if this keymap item is our Esc → Exit Node Group binding."""
+    try:
+        return (
+            kmi.idname == 'node.tree_path_parent'
+            and kmi.type == 'ESC'
+            and kmi.value == 'PRESS'
+        )
+    except (RuntimeError, ReferenceError, UnicodeDecodeError):
+        return False
+
+
+def clear_exit_node_group_hotkey():
+    """Remove our Esc → Exit Node Group bindings.
+
+    Look the items up fresh in the live keymaps instead of keeping
+    references around — those can dangle after a hot-reload and reading
+    a freed item raises UnicodeDecodeError on ``remove()``.
+    """
+    wm = bpy.context.window_manager
+    for kc in (wm.keyconfigs.user, wm.keyconfigs.addon, wm.keyconfigs.active):
+        if kc is None:
+            continue
+        for km in kc.keymaps:
+            if km.name != "Node Editor":
+                continue
+            # Collect first; removing while iterating the collection is unsafe.
+            doomed = [kmi for kmi in km.keymap_items if _is_our_exit_node_group_kmi(kmi)]
+            for kmi in doomed:
+                try:
+                    km.keymap_items.remove(kmi)
+                except (RuntimeError, ReferenceError):
+                    pass
+
+
+def register_exit_node_group_hotkey():
+    """Bind Esc → exit the current node group (Node Editor).
+
+    node.tree_path_parent's own poll already requires being inside a node
+    group, and Blender routes Esc to open menus/popups before it ever
+    reaches this keymap, so this only fires when both conditions hold.
+    """
+    clear_exit_node_group_hotkey()
+
+    wm = bpy.context.window_manager
+    target_kc = get_target_keyconfig(wm)
+    if target_kc is None:
+        return False
+
+    km = target_kc.keymaps.new(name="Node Editor", space_type='NODE_EDITOR', region_type='WINDOW')
+    km.keymap_items.new('node.tree_path_parent', 'ESC', 'PRESS')
+
+    return True
+
+
 _REMAP_ENUM_ITEMS = [
     (key, remap.label, f"H → Grab remap for the {remap.label}")
     for key, remap in GRAB_REMAPS.items()
@@ -243,6 +298,36 @@ class BESTPRESETS_OT_reset_search_hotkey(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BESTPRESETS_OT_set_exit_node_group_hotkey(bpy.types.Operator):
+    bl_idname = "best_presets.set_exit_node_group_hotkey"
+    bl_label = "Set Esc → Exit Node Group"
+    bl_description = "Bind Esc to exit the current node group in the Node Editor"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        del context
+        if not register_exit_node_group_hotkey():
+            self.report({'WARNING'}, "Could not update Blender keyconfig")
+            return {'CANCELLED'}
+        set_pref("exit_node_group_hotkey_enabled", True)
+        self.report({'INFO'}, "Esc now exits the current node group")
+        return {'FINISHED'}
+
+
+class BESTPRESETS_OT_reset_exit_node_group_hotkey(bpy.types.Operator):
+    bl_idname = "best_presets.reset_exit_node_group_hotkey"
+    bl_label = "Reset"
+    bl_description = "Remove the Esc → Exit Node Group binding"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        del context
+        clear_exit_node_group_hotkey()
+        set_pref("exit_node_group_hotkey_enabled", False)
+        self.report({'INFO'}, "Esc → Exit Node Group binding removed")
+        return {'FINISHED'}
+
+
 def _apply_persistent_remaps():
     """Re-apply whichever remaps the user previously enabled. Runs once."""
     prefs = get_prefs()
@@ -252,6 +337,8 @@ def _apply_persistent_remaps():
                 enable_grab_remap(remap)
         if prefs.search_hotkey_enabled:
             register_search_hotkey()
+        if prefs.exit_node_group_hotkey_enabled:
+            register_exit_node_group_hotkey()
     return None
 
 
@@ -267,3 +354,4 @@ def unregister():
     for remap in GRAB_REMAPS.values():
         disable_grab_remap(remap)
     clear_search_hotkey()
+    clear_exit_node_group_hotkey()

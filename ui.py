@@ -7,8 +7,10 @@ from .color import (
 from .keymaps import (
     GRAB_REMAPS,
     BESTPRESETS_OT_remap_grab_hotkeys,
+    BESTPRESETS_OT_reset_exit_node_group_hotkey,
     BESTPRESETS_OT_reset_grab_hotkeys,
     BESTPRESETS_OT_reset_search_hotkey,
+    BESTPRESETS_OT_set_exit_node_group_hotkey,
     BESTPRESETS_OT_set_search_hotkey,
 )
 from .preferences import get_prefs
@@ -178,6 +180,23 @@ class BestPresetsShortcutsMixin:
         )
         row.operator(
             BESTPRESETS_OT_reset_search_hotkey.bl_idname,
+            text="Reset",
+            icon='LOOP_BACK',
+        )
+
+        layout.separator()
+        layout.label(text="Node Editor Shortcut:")
+
+        exit_node_group_on = bool(prefs and prefs.exit_node_group_hotkey_enabled)
+        row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(exit_node_group_on))
+        row.operator(
+            BESTPRESETS_OT_set_exit_node_group_hotkey.bl_idname,
+            text="Esc → Exit Node Group",
+            icon='NODETREE',
+        )
+        row.operator(
+            BESTPRESETS_OT_reset_exit_node_group_hotkey.bl_idname,
             text="Reset",
             icon='LOOP_BACK',
         )
