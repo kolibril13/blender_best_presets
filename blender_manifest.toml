@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "best_presets"
-version = "0.5.2"
+version = "0.5.3"
 name = "Best Presets"
 tagline = "Quick preset tools for Blender"
 maintainer = "Jan-Hendrik Müller"
