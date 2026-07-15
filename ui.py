@@ -14,6 +14,11 @@ from .keymaps import (
     BESTPRESETS_OT_set_search_hotkey,
 )
 from .preferences import get_prefs
+from .resolve_shortcuts import (
+    BESTPRESETS_OT_set_resolve_delete_hotkey,
+    get_delete_binding,
+    is_delete_x_active,
+)
 from .render_presets import (
     RENDER_PRESETS,
     BESTPRESETS_OT_accept_output_folder,
@@ -202,6 +207,34 @@ class BestPresetsShortcutsMixin:
         )
 
 
+class BestPresetsResolveShortcutsMixin:
+    bl_label = "DaVinci Resolve Shortcuts"
+    bl_region_type = 'UI'
+    bl_category = "Best Presets"
+    bl_order = 3
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        del context
+        layout = self.layout
+
+        layout.label(text="Note: macOS only", icon='INFO')
+
+        binding = get_delete_binding()
+        if binding is not None:
+            layout.label(text=f"Current Delete key: {binding}")
+
+        row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(is_delete_x_active()))
+        row.operator(
+            BESTPRESETS_OT_set_resolve_delete_hotkey.bl_idname,
+            text="X → Delete (like Blender)",
+            icon='EVENT_X',
+        )
+
+        layout.label(text="Restart Resolve to apply", icon='FILE_REFRESH')
+
+
 # 3D Viewport sidebar
 
 
@@ -228,6 +261,12 @@ class BESTPRESETS_PT_shortcuts(BestPresetsShortcutsMixin, bpy.types.Panel):
     bl_parent_id = "BESTPRESETS_PT_main_panel"
 
 
+class BESTPRESETS_PT_resolve_shortcuts(BestPresetsResolveShortcutsMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_resolve_shortcuts"
+    bl_space_type = 'VIEW_3D'
+    bl_parent_id = "BESTPRESETS_PT_main_panel"
+
+
 # Video Sequence Editor sidebar (sequencer and preview views)
 
 
@@ -250,5 +289,11 @@ class BESTPRESETS_PT_output_seq(BestPresetsOutputMixin, bpy.types.Panel):
 
 class BESTPRESETS_PT_shortcuts_seq(BestPresetsShortcutsMixin, bpy.types.Panel):
     bl_idname = "BESTPRESETS_PT_shortcuts_seq"
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_parent_id = "BESTPRESETS_PT_main_panel_seq"
+
+
+class BESTPRESETS_PT_resolve_shortcuts_seq(BestPresetsResolveShortcutsMixin, bpy.types.Panel):
+    bl_idname = "BESTPRESETS_PT_resolve_shortcuts_seq"
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_parent_id = "BESTPRESETS_PT_main_panel_seq"
