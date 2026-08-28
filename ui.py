@@ -196,7 +196,7 @@ class BestPresetsShortcutsMixin:
         row.label(text="", icon=_status_icon(local_view_on))
         row.operator(
             BESTPRESETS_OT_set_local_view_hotkey.bl_idname,
-            text="< > | \u2192 Local View",
+            text=">< \u2192 Local View",
             icon='ZOOM_SELECTED',
         )
         row.operator(

@@ -76,17 +76,25 @@ Each has a **Reset** button that restores `H` to its default behaviour.
 
 ## Local View (German / ISO keyboards)
 
-Blender binds Local View to `Numpad /` and to plain `/`. On a German layout
-the main-row `/` is `Shift+7`, so that second binding sits on a key you cannot
-press, and *Emulate Numpad* only remaps the digits `1`–`0` — never `Numpad /`.
-Laptop users on a German keyboard are therefore left with no Local View
-shortcut at all.
+On a German keyboard Local View has no reachable shortcut. Blender binds it to
+`Numpad /` and to plain `/`, but the main-row `/` is `Shift+7` on a German
+layout — that binding sits on the physical key labelled `-`. And *Emulate
+Numpad* does not help: it remaps only the digits `1`–`0`, never `Numpad /`.
 
-- **`< > |` → Local View** — binds the ISO "102nd" key (left of `Y` on a
-  German layout) to Local View, and `Alt` + that key to *Remove from Local
-  View*. That key does not exist on US ANSI keyboards, so Blender ships no
-  binding for it in any keymap — it cannot collide with anything.
-- **Reset** — removes both bindings.
+- **`>< → Local View`** — binds the `><` key (left of `Y`) to Local View. The
+  View pie menu that normally lives there moves to `Alt+><`, and
+  `Shift+Alt+><` removes the selection from Local View.
+- **Reset** — removes both bindings and puts the View pie back on `><`.
+
+`><` is used because it is the one key verifiably reachable here. The ISO
+`< > |` key is `GRLESS` on Linux and Windows, but macOS swaps the ISO
+keycodes, so Blender receives it as `ACCENT_GRAVE` — which is why nothing
+happens if you bind `GRLESS` directly (a [long-standing issue on ISO
+layouts](https://developer.blender.org/T64004)).
+
+Which pie moves is read from the live keymap, so the *Tilde Action* preference
+(View pie vs. Transform Gizmo pie) is preserved. `Shift+><` (walk/fly
+navigation) and `Ctrl+><` are left untouched.
 
 ## Status indicators & persistence
 

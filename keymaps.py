@@ -226,33 +226,87 @@ def register_exit_node_group_hotkey():
     return True
 
 
-# The ISO "102nd" key (< > | , left of Y on a German layout). It does not
-# exist on US ANSI keyboards, so Blender ships no binding for it anywhere --
-# which makes it a conflict-free home for Local View on a keyboard whose
-# Numpad / is out of reach. Blender's default SLASH binding sits on the
-# physical key that a German layout labels "-", and Emulate Numpad only
-# covers the digits, so neither default helps here.
-LOCAL_VIEW_KEY = 'GRLESS'
+# Local View has no reachable shortcut on a German/ISO keyboard: the default
+# Numpad / needs a numpad (Emulate Numpad only remaps the digits 1-0, never
+# the operators), and Blender's second default binding, plain SLASH, sits on
+# the physical key a German layout labels "-". GRLESS -- the ISO key left of
+# Y -- looks like the obvious free key, but macOS does not report it (see the
+# long-standing "GRLESS key dont work in spanish keyboards" report); macOS
+# swaps the ISO keycodes, so that key arrives as ACCENT_GRAVE instead.
+#
+# ACCENT_GRAVE is therefore the >< key on a German Mac keyboard, and it is
+# verifiably reachable -- it is what Blender already receives for the View
+# pie menu. Rather than dropping that pie, it is relocated onto Alt + the
+# same key. The reset operator puts it back.
+LOCAL_VIEW_KEY = 'ACCENT_GRAVE'
 
+# (idname, shift, alt) for the bindings we own on LOCAL_VIEW_KEY.
 _LOCAL_VIEW_BINDINGS = (
-    ('view3d.localview', False),
-    ('view3d.localview_remove_from', True),
+    ('view3d.localview', False, False),
+    # Shift+Alt is unbound by default, so remove-from keeps a home once the
+    # View pie takes Alt.
+    ('view3d.localview_remove_from', True, True),
 )
+
+_LOCAL_VIEW_IDNAMES = {idname for idname, _shift, _alt in _LOCAL_VIEW_BINDINGS}
+
+_PIE_IDNAME = 'wm.call_menu_pie'
+# Fallback only; the live binding is read off the default keymap so that the
+# "Tilde Action" preference (View vs. Transform Gizmo pie) is preserved.
+_DEFAULT_PIE_MENU = 'VIEW3D_MT_view_pie'
+
+
+def _is_unmodified(keymap_item, key):
+    """True when `key` is pressed bare, whatever the event value.
+
+    Unlike is_plain_press_shortcut this ignores ``value``: the View pie sits
+    on PRESS or on CLICK_DRAG depending on the "Pie Menu on Drag" preference,
+    and view3d.navigate takes CLICK in the latter case.
+    """
+    return (
+        keymap_item.type == key
+        and not keymap_item.any
+        and not keymap_item.shift
+        and not keymap_item.ctrl
+        and not keymap_item.alt
+        and not keymap_item.oskey
+        and keymap_item.key_modifier == 'NONE'
+    )
+
+
+def _iter_local_view_conflicts(wm):
+    """Yield 3D View bindings sitting on the bare Local View key."""
+    for _km, kmi in _scan_all_keyconfigs(wm, space_filter='VIEW_3D'):
+        try:
+            if kmi.idname in _LOCAL_VIEW_IDNAMES:
+                continue
+            if _is_unmodified(kmi, LOCAL_VIEW_KEY):
+                yield kmi
+        except (RuntimeError, ReferenceError, UnicodeDecodeError):
+            continue
 
 
 def _is_our_local_view_kmi(kmi):
-    """True if this keymap item is one of our Local View bindings."""
+    """True if this keymap item is one of the bindings we install."""
     try:
-        for idname, alt in _LOCAL_VIEW_BINDINGS:
-            if kmi.idname == idname and kmi.type == LOCAL_VIEW_KEY and kmi.alt == alt:
+        if kmi.type != LOCAL_VIEW_KEY:
+            return False
+        for idname, shift, alt in _LOCAL_VIEW_BINDINGS:
+            if kmi.idname == idname and kmi.shift == shift and kmi.alt == alt:
                 return True
-        return False
+        # The View pie we relocated onto Alt + key.
+        return (
+            kmi.idname == _PIE_IDNAME
+            and kmi.alt
+            and not kmi.shift
+            and not kmi.ctrl
+        )
     except (RuntimeError, ReferenceError, UnicodeDecodeError):
         return False
 
 
 def clear_local_view_hotkey():
-    """Remove our Local View bindings.
+    """Remove our bindings and put the View pie back on the bare key.
 
     Look the items up fresh in the live keymaps instead of keeping
     references around -- those can dangle after a hot-reload and reading
@@ -273,19 +327,33 @@ def clear_local_view_hotkey():
                 except (RuntimeError, ReferenceError):
                     pass
 
+    for kmi in list(_iter_local_view_conflicts(wm)):
+        _set_kmi_active(kmi, True)
+
 
 def register_local_view_hotkey():
-    """Bind the ISO < > | key to Local View (Alt for remove-from)."""
+    """Bind >< to Local View and move the View pie onto Alt + ><."""
     clear_local_view_hotkey()
 
     wm = bpy.context.window_manager
+
+    # Free the bare key, remembering which pie menu was on it.
+    pie_menu = None
+    for kmi in list(_iter_local_view_conflicts(wm)):
+        if kmi.idname == _PIE_IDNAME and pie_menu is None:
+            pie_menu = kmi.properties.name or None
+        _set_kmi_active(kmi, False)
+
     target_kc = get_target_keyconfig(wm)
     if target_kc is None:
         return False
 
     km = target_kc.keymaps.new(name="3D View", space_type='VIEW_3D', region_type='WINDOW')
-    for idname, alt in _LOCAL_VIEW_BINDINGS:
-        km.keymap_items.new(idname, LOCAL_VIEW_KEY, 'PRESS', alt=alt)
+    for idname, shift, alt in _LOCAL_VIEW_BINDINGS:
+        km.keymap_items.new(idname, LOCAL_VIEW_KEY, 'PRESS', shift=shift, alt=alt)
+
+    pie_kmi = km.keymap_items.new(_PIE_IDNAME, LOCAL_VIEW_KEY, 'PRESS', alt=True)
+    pie_kmi.properties.name = pie_menu or _DEFAULT_PIE_MENU
 
     return True
 
@@ -394,10 +462,11 @@ class BESTPRESETS_OT_reset_exit_node_group_hotkey(bpy.types.Operator):
 
 class BESTPRESETS_OT_set_local_view_hotkey(bpy.types.Operator):
     bl_idname = "best_presets.set_local_view_hotkey"
-    bl_label = "Set < > | → Local View"
+    bl_label = "Set >< → Local View"
     bl_description = (
-        "Bind the ISO < > | key (left of Y on a German layout) to Local View, "
-        "for keyboards where Numpad / is out of reach"
+        "Bind >< to Local View, for keyboards where Numpad / is out of reach. "
+        "The View pie menu moves to Alt+><, and Shift+Alt+>< removes the "
+        "selection from Local View"
     )
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -407,21 +476,21 @@ class BESTPRESETS_OT_set_local_view_hotkey(bpy.types.Operator):
             self.report({'WARNING'}, "Could not update Blender keyconfig")
             return {'CANCELLED'}
         set_pref("local_view_hotkey_enabled", True)
-        self.report({'INFO'}, "< > | now toggles Local View (Alt to remove from it)")
+        self.report({'INFO'}, ">< toggles Local View; View pie moved to Alt+><")
         return {'FINISHED'}
 
 
 class BESTPRESETS_OT_reset_local_view_hotkey(bpy.types.Operator):
     bl_idname = "best_presets.reset_local_view_hotkey"
     bl_label = "Reset"
-    bl_description = "Remove the < > | → Local View binding"
+    bl_description = "Remove the >< → Local View binding and put the View pie back on ><"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         del context
         clear_local_view_hotkey()
         set_pref("local_view_hotkey_enabled", False)
-        self.report({'INFO'}, "< > | → Local View binding removed")
+        self.report({'INFO'}, ">< → Local View removed; View pie restored to ><")
         return {'FINISHED'}
 
 

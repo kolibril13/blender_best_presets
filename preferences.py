@@ -26,8 +26,8 @@ class BestPresetsPreferences(bpy.types.AddonPreferences):
     )
 
     local_view_hotkey_enabled: bpy.props.BoolProperty(
-        name="< > | → Local View",
-        description="Re-apply the ISO < > | key → Local View shortcut on startup",
+        name=">< → Local View",
+        description="Re-apply the >< → Local View shortcut on startup",
         default=False,
     )
 
