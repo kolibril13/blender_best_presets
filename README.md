@@ -3,7 +3,7 @@
 A small Blender add-on with quick preset tools for color management, render
 output, and handy keymap shortcuts.
 
-- **Blender:** 5.1.0 or newer
+- **Blender:** 5.2.0 or newer
 - **License:** GPL-3.0-or-later
 
 ## Where to find it
@@ -40,7 +40,7 @@ The default folder is your `~/Downloads/` directory.
 ### Video export presets
 
 Each button configures the scene's render settings for a common video format
-(and, on Blender 5.0+, sets the media type to `VIDEO` first):
+(setting the media type to `VIDEO` first):
 
 - **Apply Best MP4 Settings** — FFmpeg / MPEG-4 container, H.264 video at
   `HIGH` quality with the `BEST` encoding preset (GOP size 12), AAC audio at
@@ -74,10 +74,25 @@ Each has a **Reset** button that restores `H` to its default behaviour.
   operator search menu, in addition to the default `F3`.
 - **Reset** — removes the binding.
 
+## Local View (German / ISO keyboards)
+
+Blender binds Local View to `Numpad /` and to plain `/`. On a German layout
+the main-row `/` is `Shift+7`, so that second binding sits on a key you cannot
+press, and *Emulate Numpad* only remaps the digits `1`–`0` — never `Numpad /`.
+Laptop users on a German keyboard are therefore left with no Local View
+shortcut at all.
+
+- **`< > |` → Local View** — binds the ISO "102nd" key (left of `Y` on a
+  German layout) to Local View, and `Alt` + that key to *Remove from Local
+  View*. That key does not exist on US ANSI keyboards, so Blender ships no
+  binding for it in any keymap — it cannot collide with anything.
+- **Reset** — removes both bindings.
+
 ## Status indicators & persistence
 
-The three keymap toggles (Viewport H → Grab, Geo Nodes H → Grab, and
-Cmd+K → Search) each show a small status icon next to their button:
+The keymap toggles (Viewport H → Grab, Geo Nodes H → Grab, Cmd+K → Search,
+Esc → Exit Node Group, and `< > |` → Local View) each show a small status icon
+next to their button:
 
 - ✓ checkmark — currently **on**
 - empty radio button — currently **off**

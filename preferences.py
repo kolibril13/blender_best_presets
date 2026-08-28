@@ -25,6 +25,12 @@ class BestPresetsPreferences(bpy.types.AddonPreferences):
         default=False,
     )
 
+    local_view_hotkey_enabled: bpy.props.BoolProperty(
+        name="< > | → Local View",
+        description="Re-apply the ISO < > | key → Local View shortcut on startup",
+        default=False,
+    )
+
     def draw(self, context):
         del context
         layout = self.layout
@@ -33,6 +39,7 @@ class BestPresetsPreferences(bpy.types.AddonPreferences):
         layout.prop(self, "geonodes_hgrab_enabled")
         layout.prop(self, "search_hotkey_enabled")
         layout.prop(self, "exit_node_group_hotkey_enabled")
+        layout.prop(self, "local_view_hotkey_enabled")
 
 
 def get_prefs():

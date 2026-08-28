@@ -10,12 +10,16 @@ type = "add-on"
 # https://docs.blender.org/manual/en/dev/advanced/extensions/tags.html
 tags = ["Geometry Nodes"]
 
-blender_version_min = "5.1.0"
+blender_version_min = "5.2.0"
 
 # https://spdx.org/licenses/
 license = [
   "SPDX:GPL-3.0-or-later",
 ]
+
+# https://docs.blender.org/manual/en/dev/advanced/extensions/getting_started.html
+[permissions]
+files = "Write render output and read/write the DaVinci Resolve keyboard preset"
 
 [build]
 paths_exclude_pattern = [

@@ -11,8 +11,6 @@ __all__ = (
     "unregister",
 )
 
-blender_version = bpy.app.version
-
 modules = None
 ordered_classes = None
 
@@ -102,13 +100,8 @@ def iter_my_deps_from_annotations(cls, my_classes):
 
 
 def get_dependency_from_annotation(value):
-    if blender_version >= (2, 93):
-        if isinstance(value, bpy.props._PropertyDeferred):
-            return value.keywords.get("type")
-    else:
-        if isinstance(value, tuple) and len(value) == 2:
-            if value[0] in (bpy.props.PointerProperty, bpy.props.CollectionProperty):
-                return value[1]["type"]
+    if isinstance(value, bpy.props._PropertyDeferred):
+        return value.keywords.get("type")
     return None
 
 

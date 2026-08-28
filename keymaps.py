@@ -51,7 +51,7 @@ def is_plain_press_shortcut(keymap_item, key):
         and not keymap_item.ctrl
         and not keymap_item.alt
         and not keymap_item.oskey
-        and getattr(keymap_item, "key_modifier", 'NONE') == 'NONE'
+        and keymap_item.key_modifier == 'NONE'
     )
 
 
@@ -226,6 +226,70 @@ def register_exit_node_group_hotkey():
     return True
 
 
+# The ISO "102nd" key (< > | , left of Y on a German layout). It does not
+# exist on US ANSI keyboards, so Blender ships no binding for it anywhere --
+# which makes it a conflict-free home for Local View on a keyboard whose
+# Numpad / is out of reach. Blender's default SLASH binding sits on the
+# physical key that a German layout labels "-", and Emulate Numpad only
+# covers the digits, so neither default helps here.
+LOCAL_VIEW_KEY = 'GRLESS'
+
+_LOCAL_VIEW_BINDINGS = (
+    ('view3d.localview', False),
+    ('view3d.localview_remove_from', True),
+)
+
+
+def _is_our_local_view_kmi(kmi):
+    """True if this keymap item is one of our Local View bindings."""
+    try:
+        for idname, alt in _LOCAL_VIEW_BINDINGS:
+            if kmi.idname == idname and kmi.type == LOCAL_VIEW_KEY and kmi.alt == alt:
+                return True
+        return False
+    except (RuntimeError, ReferenceError, UnicodeDecodeError):
+        return False
+
+
+def clear_local_view_hotkey():
+    """Remove our Local View bindings.
+
+    Look the items up fresh in the live keymaps instead of keeping
+    references around -- those can dangle after a hot-reload and reading
+    a freed item raises UnicodeDecodeError on ``remove()``.
+    """
+    wm = bpy.context.window_manager
+    for kc in (wm.keyconfigs.user, wm.keyconfigs.addon, wm.keyconfigs.active):
+        if kc is None:
+            continue
+        for km in kc.keymaps:
+            if km.name != "3D View":
+                continue
+            # Collect first; removing while iterating the collection is unsafe.
+            doomed = [kmi for kmi in km.keymap_items if _is_our_local_view_kmi(kmi)]
+            for kmi in doomed:
+                try:
+                    km.keymap_items.remove(kmi)
+                except (RuntimeError, ReferenceError):
+                    pass
+
+
+def register_local_view_hotkey():
+    """Bind the ISO < > | key to Local View (Alt for remove-from)."""
+    clear_local_view_hotkey()
+
+    wm = bpy.context.window_manager
+    target_kc = get_target_keyconfig(wm)
+    if target_kc is None:
+        return False
+
+    km = target_kc.keymaps.new(name="3D View", space_type='VIEW_3D', region_type='WINDOW')
+    for idname, alt in _LOCAL_VIEW_BINDINGS:
+        km.keymap_items.new(idname, LOCAL_VIEW_KEY, 'PRESS', alt=alt)
+
+    return True
+
+
 _REMAP_ENUM_ITEMS = [
     (key, remap.label, f"H → Grab remap for the {remap.label}")
     for key, remap in GRAB_REMAPS.items()
@@ -328,6 +392,39 @@ class BESTPRESETS_OT_reset_exit_node_group_hotkey(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BESTPRESETS_OT_set_local_view_hotkey(bpy.types.Operator):
+    bl_idname = "best_presets.set_local_view_hotkey"
+    bl_label = "Set < > | → Local View"
+    bl_description = (
+        "Bind the ISO < > | key (left of Y on a German layout) to Local View, "
+        "for keyboards where Numpad / is out of reach"
+    )
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        del context
+        if not register_local_view_hotkey():
+            self.report({'WARNING'}, "Could not update Blender keyconfig")
+            return {'CANCELLED'}
+        set_pref("local_view_hotkey_enabled", True)
+        self.report({'INFO'}, "< > | now toggles Local View (Alt to remove from it)")
+        return {'FINISHED'}
+
+
+class BESTPRESETS_OT_reset_local_view_hotkey(bpy.types.Operator):
+    bl_idname = "best_presets.reset_local_view_hotkey"
+    bl_label = "Reset"
+    bl_description = "Remove the < > | → Local View binding"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        del context
+        clear_local_view_hotkey()
+        set_pref("local_view_hotkey_enabled", False)
+        self.report({'INFO'}, "< > | → Local View binding removed")
+        return {'FINISHED'}
+
+
 def _apply_persistent_remaps():
     """Re-apply whichever remaps the user previously enabled. Runs once."""
     prefs = get_prefs()
@@ -339,6 +436,8 @@ def _apply_persistent_remaps():
             register_search_hotkey()
         if prefs.exit_node_group_hotkey_enabled:
             register_exit_node_group_hotkey()
+        if prefs.local_view_hotkey_enabled:
+            register_local_view_hotkey()
     return None
 
 
@@ -355,3 +454,4 @@ def unregister():
         disable_grab_remap(remap)
     clear_search_hotkey()
     clear_exit_node_group_hotkey()
+    clear_local_view_hotkey()

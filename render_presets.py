@@ -39,8 +39,7 @@ RENDER_PRESETS = {
         button_text="Apply Best MP4 Settings",
         icon='FILE_MOVIE',
         settings={
-            # Blender 5.0+ requires media_type to be set before file_format;
-            # missing attributes are skipped on older versions.
+            # media_type must be set before file_format.
             "image_settings.media_type": 'VIDEO',
             "image_settings.file_format": 'FFMPEG',
             "ffmpeg.format": 'MPEG4',
@@ -117,8 +116,7 @@ def _resolve(render, dotted):
 def apply_settings(render, settings):
     for dotted, value in settings.items():
         obj, attr = _resolve(render, dotted)
-        if hasattr(obj, attr):
-            setattr(obj, attr, value)
+        setattr(obj, attr, value)
 
 
 def is_preset_active(render, preset):

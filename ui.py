@@ -9,8 +9,10 @@ from .keymaps import (
     BESTPRESETS_OT_remap_grab_hotkeys,
     BESTPRESETS_OT_reset_exit_node_group_hotkey,
     BESTPRESETS_OT_reset_grab_hotkeys,
+    BESTPRESETS_OT_reset_local_view_hotkey,
     BESTPRESETS_OT_reset_search_hotkey,
     BESTPRESETS_OT_set_exit_node_group_hotkey,
+    BESTPRESETS_OT_set_local_view_hotkey,
     BESTPRESETS_OT_set_search_hotkey,
 )
 from .preferences import get_prefs
@@ -122,10 +124,7 @@ class BestPresetsOutputMixin:
 
         # Show current format info
         fmt = render.image_settings.file_format
-        if hasattr(render.image_settings, 'media_type'):
-            is_movie = render.image_settings.media_type == 'VIDEO'
-        else:
-            is_movie = fmt == 'FFMPEG'
+        is_movie = render.image_settings.media_type == 'VIDEO'
 
         if is_movie and fmt == 'FFMPEG':
             codec = render.ffmpeg.codec
@@ -185,6 +184,23 @@ class BestPresetsShortcutsMixin:
         )
         row.operator(
             BESTPRESETS_OT_reset_search_hotkey.bl_idname,
+            text="Reset",
+            icon='LOOP_BACK',
+        )
+
+        layout.separator()
+        layout.label(text="Viewport Shortcut:")
+
+        local_view_on = bool(prefs and prefs.local_view_hotkey_enabled)
+        row = layout.row(align=True)
+        row.label(text="", icon=_status_icon(local_view_on))
+        row.operator(
+            BESTPRESETS_OT_set_local_view_hotkey.bl_idname,
+            text="< > | \u2192 Local View",
+            icon='ZOOM_SELECTED',
+        )
+        row.operator(
+            BESTPRESETS_OT_reset_local_view_hotkey.bl_idname,
             text="Reset",
             icon='LOOP_BACK',
         )
