@@ -165,6 +165,90 @@ class BESTPRESETS_OT_apply_render_preset(bpy.types.Operator):
         return {'FINISHED'}
 
 
+@dataclass(frozen=True)
+class QualityPreset:
+    label: str
+    description: str
+    resolution_percentage: int
+    samples: int
+
+
+# Both levels share a Full HD base resolution; Low halves it in x and y.
+QUALITY_RESOLUTION = (1920, 1080)
+
+QUALITY_PRESETS = {
+    'HIGH': QualityPreset(
+        label="High Res",
+        description="Final render: Full HD (1920×1080) at 2048 samples",
+        resolution_percentage=100,
+        samples=2048,
+    ),
+    'LOW': QualityPreset(
+        label="Low Res",
+        description="Test render: half resolution (960×540) at 512 samples",
+        resolution_percentage=50,
+        samples=512,
+    ),
+}
+
+
+def _render_samples(scene):
+    """Sample count of the scene's active engine, or None if unknown."""
+    if scene.render.engine == 'CYCLES':
+        cycles = getattr(scene, "cycles", None)
+        return cycles.samples if cycles else None
+    return scene.eevee.taa_render_samples
+
+
+def active_quality(scene):
+    """Key of the quality preset matching the scene, or None."""
+    render = scene.render
+    if (render.resolution_x, render.resolution_y) != QUALITY_RESOLUTION:
+        return None
+    samples = _render_samples(scene)
+    for key, preset in QUALITY_PRESETS.items():
+        if (render.resolution_percentage == preset.resolution_percentage
+                and samples == preset.samples):
+            return key
+    return None
+
+
+class BESTPRESETS_OT_set_render_quality(bpy.types.Operator):
+    bl_idname = "best_presets.set_render_quality"
+    bl_label = "Set Render Quality"
+    bl_description = "Switch between final and test render resolution and samples"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    quality: bpy.props.EnumProperty(
+        items=[(key, p.label, p.description) for key, p in QUALITY_PRESETS.items()],
+        options={'HIDDEN'},
+    )
+
+    @classmethod
+    def description(cls, context, properties):
+        del context
+        preset = QUALITY_PRESETS.get(properties.quality)
+        return preset.description if preset else cls.bl_description
+
+    def execute(self, context):
+        del context
+        preset = QUALITY_PRESETS[self.quality]
+
+        # Apply to every scene so scene strips rendered through the VSE
+        # use the same quality. Set both engines so switching stays consistent.
+        for scene in bpy.data.scenes:
+            render = scene.render
+            render.resolution_x, render.resolution_y = QUALITY_RESOLUTION
+            render.resolution_percentage = preset.resolution_percentage
+            cycles = getattr(scene, "cycles", None)
+            if cycles is not None:
+                cycles.samples = preset.samples
+            scene.eevee.taa_render_samples = preset.samples
+
+        self.report({'INFO'}, preset.description)
+        return {'FINISHED'}
+
+
 class BESTPRESETS_OT_pick_output_folder(bpy.types.Operator):
     bl_idname = "best_presets.pick_output_folder"
     bl_label = "Select Output Folder"

@@ -22,10 +22,13 @@ from .resolve_shortcuts import (
     is_delete_x_active,
 )
 from .render_presets import (
+    QUALITY_PRESETS,
     RENDER_PRESETS,
     BESTPRESETS_OT_accept_output_folder,
     BESTPRESETS_OT_apply_render_preset,
     BESTPRESETS_OT_pick_output_folder,
+    BESTPRESETS_OT_set_render_quality,
+    active_quality,
     is_preset_active,
 )
 
@@ -116,6 +119,20 @@ class BestPresetsOutputMixin:
             text="Accept",
             icon='CHECKMARK',
         )
+
+        layout.separator()
+
+        # Render quality toggle
+        layout.label(text="Render Quality:")
+        current_quality = active_quality(scene)
+        row = layout.row(align=True)
+        for key, preset in QUALITY_PRESETS.items():
+            props = row.operator(
+                BESTPRESETS_OT_set_render_quality.bl_idname,
+                text=preset.label,
+                depress=key == current_quality,
+            )
+            props.quality = key
 
         layout.separator()
 
